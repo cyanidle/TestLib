@@ -139,10 +139,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="dPoint2f.h" />
+    <ClInclude Include="dLinearAlg.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="dPoint2f.cpp" />
+    <ClCompile Include="dLinearAlg.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
