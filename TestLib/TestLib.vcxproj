@@ -140,9 +140,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="dLinearAlg.h" />
+    <ClInclude Include="dMatrix.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dLinearAlg.cpp" />
+    <ClCompile Include="dMatrix.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
