@@ -2,22 +2,21 @@
 #include <exception>
 #include <algorithm>
 #include <memory>
+#include <vector>
 #include <array>
 #include <initializer_list>
 
 template<class Type = float, int rows = 3, int cols = 3>
 class dMatrix {
-	typedef std::array<std::array<Type, rows>, cols> dmatrix;
-	typedef std::array<Type, rows> dvect;
 public:
 	dMatrix() : 
 		m_cols(cols), m_rows(rows), m_size(cols * rows) {
-		mp_arr = std::shared_ptr<dmatrix>(new dmatrix());
+		mp_arr = std::shared_ptr<std::array<std::array<Type, rows>, cols>>(new std::array<std::array<Type, rows>, cols>());
 		m_arr = *mp_arr;
 		for (int i = 0; i < m_cols; i++) {
-			dvect row;
-			row.fill(Type());
-			m_arr.at(i) = row;
+			std::array<Type, rows> col;
+			col.fill(Type());
+			m_arr.at(i) = col;
 		}
 	}
 	dMatrix(std::initializer_list<Type> list) : 
@@ -25,12 +24,12 @@ public:
 		int msize = static_cast<int>(list.size());
 		int count = 0;
 		for (auto elem : list) {
-			m_arr[count / m_rows][count % m_rows] = static_cast<Type>(elem);
+			m_arr.at(count / m_rows).at(count % m_rows) = static_cast<Type>(elem);
 			if (++count == m_size) 
 				break;
 		}
 	}
-	dvect& operator[](int index) {
+	std::array<Type, rows>& operator[](int index) {
 		return m_arr.at(index);
 	}
 	Type get(int row, int col = 0) const {
@@ -39,37 +38,105 @@ public:
 	void set(Type val, int row, int col = 0) {
 		m_arr.at(col).at(row) = val;
 	}
-	Type& at(int row, int col = 0) const {
-		return m_arr.at(col).at(row);
+	Type& at(int arow, int acol = 0){
+		return static_cast<Type&>(m_arr.at(acol).at(arow));
 	}
-	dMatrix<Type>& operator=(const dMatrix<Type>&& rsrc) {
+	template <class Type, int src_rows, int src_cols>
+	dMatrix<Type, src_rows, src_cols>& operator=(const dMatrix<Type, src_rows, src_cols>&& rsrc) {
 		if (this != &rsrc) {
-		mp_arr = rsrc.mp_arr;
+		mp_arr = rsrc.get_arr_ptr();
 		m_arr = *mp_arr;
-		m_size = rsrc.m_size;
-		m_cols = rsrc.m_cols;
-		m_rows = rsrc.m_rows;
+		m_size = rsrc.get_size();
+		m_cols = rsrc.get_cols();
+		m_rows = rsrc.get_rows();
 		}
 		return *this;
 	}
-	dMatrix(const dMatrix<Type>& src):
-		dMatrix<Type,src.m_rows,src.m_cols>()
+	template <class Type, int src_rows, int src_cols>
+	dMatrix<Type, rows, src_cols> operator*(dMatrix<Type, src_rows, src_cols>&& src) {
+		if (get_cols() != src.get_rows()) {
+			throw std::exception("Cant multiply matrices! Did you try to multiply vectors?");
+		}
+		int resulting_size = get_rows() * src.get_rows();
+		dMatrix<Type, rows, 1> result;
+		for (int bcol = 0; bcol < get_cols(); bcol++) {
+			for (int brow = 0; brow < get_rows(); brow++) {
+				for (int row = 0; row < src.get_rows(); row++) {
+					for (int col = 0; col < src.get_cols(); col++) {
+						result[brow][bcol] +=
+							m_arr[brow][bcol] * src[row][col];
+					}
+				}
+			}
+		}
+		return result;
+	}
+	template <class Type,int src_rows, int src_cols>
+	dMatrix(const dMatrix<Type, src_rows, src_cols>& src):
+		dMatrix<Type, src_rows, src_cols>()
 	{
-		for (int col = 0; col < src.m_cols; col++) {
-			for (int row = 0; row < src.m_rows; row++) {
+		for (int col = 0; col < src_cols; col++) {
+			for (int row = 0; row < src_rows; row++) {
 				this->at(row, col) = src.get(row, col);
 			}
 		}
 	}
+	dMatrix<Type, rows, cols>& copy(const dMatrix<Type, rows, cols>& src) {
+		for (int col = 0; col < src.get_cols(); col++) {
+			for (int row = 0; row < src.get_rows(); row++) {
+				this->at(row, col) = src.get(row, col);
+			}
+		}
+		return *this;
+	}
+
+
+	template <class Type, int res_rows = rows, int res_cols = cols>
+	dMatrix<Type, res_rows, res_cols> operator*(dMatrix<Type, res_rows, res_cols>& src) const {
+		if (m_cols != src.get_rows()) {
+			char chbuff[100];
+			sprintf_s(chbuff, "Cant multiply matrices (%d/%d columns/rows by %d/%d columns/rows)",
+				m_cols, m_rows, src.get_cols(), src.get_rows());
+			throw std::exception(chbuff);
+		}
+		int resulting_size = m_rows * src.get_rows();
+		dMatrix<Type, res_rows, res_cols> result;
+		for (int bcol = 0; bcol < m_cols; bcol++) {
+			for (int brow = 0; brow < m_rows; brow++) {
+				for (int row = 0; row < src.get_rows(); row++) {
+					for (int col = 0; col < src.get_cols(); col++) {
+						result[brow][bcol] +=
+							m_arr[brow][bcol] * src[row][col];
+					}
+				}
+			}
+		}
+		return result;
+	};
 	~dMatrix() {
 	}
+	int get_size() const{
+		return m_size;
+	}
+	int get_rows() const {
+		return m_rows;
+	}
+	int get_cols() const {
+		return m_cols;
+	}
+	std::shared_ptr<std::shared_ptr<std::array<std::array<Type, rows>, cols>>> get_arr_ptr() const{
+		return mp_arr;
+	}
 private:
-	std::shared_ptr<dmatrix> mp_arr;
-	dmatrix m_arr;
+	std::shared_ptr<std::array<std::array<Type, rows>, cols>> mp_arr;
+	std::array<std::array<Type, rows>, cols> m_arr;
 	int m_size;
 	int m_rows;
 	int m_cols;
 };
+
+
+
 
 
 //template<class Type>
@@ -104,20 +171,20 @@ private:
 //		return *this;
 //	};
 //	dMatrix<Type> operator*(dMatrix<Type>& src) const {
-//		if (m_cols != src.m_rows) {
+//		if (m_cols != src.get_rows()) {
 //			char chbuff[100];
 //			sprintf_s(chbuff, "Cant multiply matrices (%d/%d columns/rows by %d/%d columns/rows)",
-//				m_cols, m_rows, src.m_cols, src.m_rows);
+//				m_cols, m_rows, src.m_cols, src.get_rows());
 //			throw std::exception(chbuff);
 //		}
-//		int resulting_size = m_rows * src.m_rows;
-//		dMatrix<Type> result(m_rows, src.m_rows);
+//		int resulting_size = m_rows * src.get_rows();
+//		dMatrix<Type> result(m_rows, src.get_rows());
 //		for (int bcol = 0; bcol < m_cols; bcol++) {
 //			for (int brow = 0; brow < m_rows; brow++) {
-//				for (int row = 0; row < src.m_rows; row++) {
+//				for (int row = 0; row < src.get_rows(); row++) {
 //					for (int col = 0; col < src.m_cols; col++) {
-//						result.m_array[bcol * src.m_rows + brow] +=
-//							src.m_array[col * src.m_rows + row] * m_array[bcol * m_rows + brow];
+//						result.m_array[bcol * src.get_rows() + brow] +=
+//							src.m_array[col * src.get_rows() + row] * m_array[bcol * m_rows + brow];
 //					}
 //				}
 //			}
@@ -149,7 +216,7 @@ private:
 //		return result;
 //	};
 //	dMatrix<Type> operator+(dMatrix<Type>& src) const {
-//		if (m_rows != src.m_rows or m_cols != src.m_cols)
+//		if (m_rows != src.get_rows() or m_cols != src.m_cols)
 //			throw std::exception("Incompatible matrices!");
 //		dMatrix<Type> result(m_rows, m_cols);
 //		for (int i = 0; i < m_size; i++) {
@@ -158,7 +225,7 @@ private:
 //		return result;
 //	};
 //	dMatrix<Type> operator-(dMatrix<Type>& src) const {
-//		if (m_rows != src.m_rows or m_cols != src.m_cols)
+//		if (m_rows != src.get_rows() or m_cols != src.m_cols)
 //			throw std::exception("Incompatible matrices!");
 //		dMatrix<Type> result(m_rows, m_cols);
 //		for (int i = 0; i < m_size; i++) {
@@ -167,20 +234,20 @@ private:
 //		return result;
 //	};
 //	dMatrix<Type> operator/(dMatrix<Type>& src) const {
-//		if (m_cols != src.m_rows) {
+//		if (m_cols != src.get_rows()) {
 //			char chbuff[100];
 //			sprintf(chbuff, "Cant devide matrices (%d/%d columns/rows by %d/%d columns/rows)",
-//				m_cols, m_rows, src.m_cols, src.m_rows);
+//				m_cols, m_rows, src.m_cols, src.get_rows());
 //			throw std::exception(chbuff);
 //		}
-//		int resulting_size = m_rows * src.m_rows;
-//		dMatrix<Type> result(m_rows, src.m_rows);
+//		int resulting_size = m_rows * src.get_rows();
+//		dMatrix<Type> result(m_rows, src.get_rows());
 //		for (int bcol = 0; bcol < m_cols; bcol++) {
 //			for (int brow = 0; brow < m_rows; brow++) {
-//				for (int row = 0; row < src.m_rows; row++) {
+//				for (int row = 0; row < src.get_rows(); row++) {
 //					for (int col = 0; col < src.m_cols; col++) {
-//						result.m_array[bcol * src.m_rows + brow] +=
-//							src.m_array[col * src.m_rows + row] / m_array[bcol * m_rows + brow];
+//						result.m_array[bcol * src.get_rows() + brow] +=
+//							src.m_array[col * src.get_rows() + row] / m_array[bcol * m_rows + brow];
 //					}
 //				}
 //			}
