@@ -66,7 +66,7 @@ public:
 		return *this;
 	}
 
-	dMatrix<Type, rows, cols> copy() {
+	dMatrix<Type, rows, cols> getCopy() {
 		dMatrix<Type, rows, cols> result;
 		for (int col = 0; col < m_cols; col++) {
 			for (int row = 0; row < m_rows; row++) {
