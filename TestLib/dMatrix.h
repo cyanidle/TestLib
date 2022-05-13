@@ -10,7 +10,7 @@ template<class Type = float, int rows = 3, int cols = 3>
 class dMatrix {
 public:
 	dMatrix() : 
-		m_cols(cols), m_rows(rows), m_size(cols * rows) {
+		m_cols(cols), m_rows(rows){
 		mp_arr = std::shared_ptr<std::array<std::array<Type, rows>, cols>>(new std::array<std::array<Type, rows>, cols>());
 		for (int i = 0; i < m_cols; i++) {
 			std::array<Type, rows> col;
@@ -24,17 +24,10 @@ public:
 		int count = 0;
 		for (auto elem : list) {
 			arr().at(count / m_rows).at(count % m_rows) = static_cast<Type>(elem);
-			if (++count == m_size) 
+			if (++count == (rows * cols)) 
 				break;
 		}
 	}
-	/*template <class Type, int src_rows, int src_cols>
-	std::array<Type, src_rows>& operator[](int index){
-		return arr().at(index);
-	}
-	std::array<Type, rows>& operator[](int index) {
-		return arr().at(index);
-	}*/
 	Type get(int row, int col = 0) const {
 		return arr().at(col).at(row);
 	}
@@ -49,7 +42,6 @@ public:
 		if (this != &rsrc) {
 		mp_arr = rsrc.get_arr_ptr();
 		arr() = *mp_arr;
-		m_size = rsrc.get_size();
 		m_cols = rsrc.get_cols();
 		m_rows = rsrc.get_rows();
 		}
@@ -65,8 +57,7 @@ public:
 			}
 		}
 	}
-	template <class Type, int src_rows, int src_cols>
-	dMatrix<Type, src_rows, src_cols>& copy(dMatrix<Type, src_rows, src_cols>& src) {
+	dMatrix<Type, rows, cols>& copy(dMatrix<Type, rows, cols>& src) {
 		for (int col = 0; col < src.get_cols(); col++) {
 			for (int row = 0; row < src.get_rows(); row++) {
 				this->at(row, col) = src.get(row, col);
@@ -75,11 +66,21 @@ public:
 		return *this;
 	}
 
+	dMatrix<Type, rows, cols> copy() {
+		dMatrix<Type, rows, cols> result;
+		for (int col = 0; col < m_cols; col++) {
+			for (int row = 0; row < m_rows; row++) {
+				result.at(row, col) = this->at(row, col);
+			}
+		}
+		return result;
+	}
+
 	template <class Type, int src_rows, int src_cols>
 	dMatrix<Type, src_rows, cols> operator*(dMatrix<Type, src_rows, src_cols>& src) {
 		if (m_rows != src.get_cols())
 			throw std::exception("Cant multiply matrices of these sizes! (Or you did Matrix * Vector?)");
-		dMatrix<Type, src_rows, cols> result;  // ������ ����� ������, ��� �� ����� �� �� ������������ UwU
+		dMatrix<Type, src_rows, cols> result;  // Yesli viletel, to lox yopta UwU
 		for (int rescol = 0; rescol < cols; rescol++) {
 			for (int resrow = 0; resrow < src_rows; resrow++) {
 				for (int src_row = 0 ; src_row < src.get_rows(); src_row++) {
@@ -91,22 +92,6 @@ public:
 		}
 		return result;
 	};
-	//template <class Type, int res_rows = rows, int res_cols = 1>
-	//dMatrix<Type, res_rows, 1> operator*(dMatrix<Type, res_rows, 1>& src) {
-	//	if (m_cols != src.get_rows())
-	//		throw std::exception("Cant multiply matrices of these sizes!"); // ������ ����� ������, ��� �� ����� �� �� ������������ UwU
-	//	dMatrix<Type, res_rows, 1> result;
-	//	for (int resrow = 0; resrow < res_rows; resrow++) {
-	//		for (int rescol = 0; rescol < res_cols; rescol++) {
-	//			for (int src_row = 0; src_row < src.get_rows(); src_row++) {
-	//				auto base = this->at(rescol, src_row);
-	//				auto other = src.at(src_row, resrow);
-	//				result.at(resrow, rescol) += (base * other);
-	//			}
-	//		}
-	//	}
-	//	return result;
-	//};
 	~dMatrix() {
 	}
 	template <class Type, int res_rows = rows, int res_cols = cols>
@@ -121,9 +106,6 @@ public:
 		}
 	return result;
 	};
-	int get_size() const{
-		return m_size;
-	}
 	int get_rows() const {
 		return m_rows;
 	}
@@ -142,7 +124,6 @@ public:
 	}
 private:
 	std::shared_ptr<std::array<std::array<Type, rows>, cols>> mp_arr;
-	int m_size;
 	int m_rows;
 	int m_cols;
 };
